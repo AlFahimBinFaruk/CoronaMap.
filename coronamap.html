@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <meta charset="utf-8">
+      <title>Add a marker using a place name</title>
+      <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+      <link href="https://api.mapbox.com/mapbox-gl-js/v2.3.0/mapbox-gl.css" rel="stylesheet">
+      <script src="https://api.mapbox.com/mapbox-gl-js/v2.3.0/mapbox-gl.js"></script>
+      <style>
+         body {
+         margin: 0;
+         padding: 0;
+         }
+         #map {
+         position: absolute;
+         top: 0;
+         bottom: 0;
+         width: 100%;
+         }
+         .mapboxgl-popup-content {
+         border: 2px solid black;
+         border-radius: 9px;
+         background-color: rgb(36 33 33 / 82%);
+         color: rgb(185 185 185);
+         }
+         .pcont {
+         font-family: sans-serif;
+         }
+         .heading {
+         font-size: 14px;
+         }
+         .list {
+         display: flex;
+         flex-direction: column;
+         justify-content: center;
+         margin-left: -6%;
+         }
+      </style>
+   </head>
+   <body>
+      <div id="map"></div>
+      <script src="https://unpkg.com/es6-promise@4.2.4/dist/es6-promise.auto.min.js"></script>
+      <script src="https://unpkg.com/@mapbox/mapbox-sdk/umd/mapbox-sdk.min.js"></script>
+      <script>
+         mapboxgl.accessToken = 'pk.eyJ1IjoiZmFoaW02OTk2IiwiYSI6ImNrcDhlMzN1NTA3eTQycmxhbjJibm1waGoifQ.s--WHkYO2cGpou964A_IYg';
+         var map = new mapboxgl.Map({
+             container: 'map',
+             style: 'mapbox://styles/mapbox/dark-v10',
+             center: [0, 20],
+             zoom: 10
+         });
+         
+         function updateMap() {
+             //console.log("running")
+             fetch("https://covid-193.p.rapidapi.com/statistics", {
+                 "method": "GET",
+                 "headers": {
+                     "x-rapidapi-key": "2ce3a72480msh6a0307791ef3552p17d89fjsn9158a2982b6d",
+                     "x-rapidapi-host": "covid-193.p.rapidapi.com"
+                 }
+             })
+                 .then(response => response.json()).then(data => {
+                     console.log(data)
+                     data.response.forEach(elm => {
+                         let country = elm.country;
+                         let active=elm.cases.active;
+                         let recovered=elm.cases.recovered;
+                         let newcase = elm.cases.new;
+                         let infected = elm.cases.total;
+                         if (infected < 80000) {
+                             color = "green"
+                         } else if (infected < 200000) {
+                             color = "yellow"
+                         } else {
+                             color = "red"
+                         }
+                         // Mark on the map
+                         addmarker(country, color,active,recovered,newcase,infected)
+                     })
+                 })
+         }
+         
+         
+         //this will update the map in every one hour..
+         setInterval(updateMap(), 3, 600, 000);
+         
+         
+         //define add marker function..
+         function addmarker(country, color,active,recovered,newcase,infected) {
+             var mapboxClient = mapboxSdk({ accessToken: mapboxgl.accessToken });
+             mapboxClient.geocoding
+                 .forwardGeocode({
+                     query: country,
+                     autocomplete: false,
+                     limit: 1
+                 })
+                 .send()
+                 .then(function (response) {
+                     if (
+                         response &&
+                         response.body &&
+                         response.body.features &&
+                         response.body.features.length
+                     ) {
+                         var feature = response.body.features[0];
+         
+                         // Create a marker and add it to the map.
+                         const marker=new mapboxgl.Marker({
+                             color: color
+                         })
+                         const minPopup=new mapboxgl.Popup();
+                         minPopup.setHTML(`<div class="pcont">
+                         <h4 class="heading">Corona Info(country)</h4>
+                         <ol class="list">
+                             <li>Country:${country}</li>
+                             <li>Active Case:${active}</li>
+                             <li>Recovered:${recovered}</li>
+                             <li>New Case:${newcase}</li>
+                             <li>Total Case:${infected}</li>
+                         </ol>
+                         </div>
+                         `);
+                         marker.setPopup(minPopup)
+                         marker.setLngLat(feature.center)
+                         marker.addTo(map);
+                     }
+                 });
+         }
+      </script>
+   </body>
+</html>
